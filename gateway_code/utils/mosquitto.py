@@ -19,19 +19,34 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
-""" Open Node NRF52840-MDK experiment implementation """
 
-from gateway_code.config import static_path
-from gateway_code.open_nodes.common.node_openocd import NodeOpenOCDBase
+"""Module managing the open node mosquitto broker."""
+
+import shlex
+
+import logging
+
+from .external_process import ExternalProcess
+
+LOGGER = logging.getLogger('gateway_code')
+
+LOG_DIR = '/var/log/gateway-server'
+MOSQUITTO_CMD = '/usr/sbin/mosquitto -v -p {port}'
 
 
-class NodeNrf52840Mdk(NodeOpenOCDBase):
-    """ Open node NRF52840-MDK implementation """
+class Mosquitto(ExternalProcess):
+    """ Class providing node mosquitto broker
 
-    TYPE = 'nrf52840mdk'
-    OPENOCD_PATH = '/opt/openocd-dev/bin/openocd'
-    OPENOCD_CFG_FILE = static_path('iot-lab-nrf528xxmdk.cfg')
-    FW_IDLE = static_path('nrf52840mdk_idle.elf')
-    FW_AUTOTEST = static_path('nrf52840mdk_autotest.elf')
-    TTY = '/dev/iotlab/ttyON_CMSIS-DAP'
-    BAUDRATE = 115200
+    It's implemented as a stoppable thread running mosquitto in a loop.
+    """
+    NAME = "mosquitto"
+
+    def __init__(self, port):
+        self.process_cmd = shlex.split(MOSQUITTO_CMD.format(port=port))
+        super(Mosquitto, self).__init__()
+
+    def check_error(self, retcode):
+        """Print debug message and check error."""
+        if retcode and self._run:
+            LOGGER.warning('%s error or restarted', self.NAME)
+        return retcode
